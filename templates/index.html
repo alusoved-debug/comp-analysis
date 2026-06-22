@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ניתוח אמינות – MIL-STD-217F + יצרנים</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    body { background:#f4f6fb; }
+    .navbar-brand { font-size:1.15rem; letter-spacing:.3px; }
+
+    /* Stepper */
+    .stepper { display:flex; align-items:center; }
+    .step { text-align:center; }
+    .step-circle {
+      width:36px; height:36px; border-radius:50%;
+      background:#dee2e6; color:#6c757d;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; margin:0 auto 4px;
+      transition: background .3s, color .3s;
+    }
+    .step.active .step-circle  { background:#0d6efd; color:#fff; }
+    .step.done  .step-circle   { background:#198754; color:#fff; }
+    .step-label  { font-size:.78rem; color:#6c757d; }
+    .step.active .step-label   { color:#0d6efd; font-weight:600; }
+    .step-line   { flex:1; height:2px; background:#dee2e6; margin:0 6px 20px; }
+
+    /* KPI cards */
+    .kpi-card { background:#fff; border-radius:10px; border:1px solid #e0e7ff;
+                box-shadow:0 2px 8px rgba(0,0,0,.07); }
+    .kpi-label { font-size:.78rem; color:#6c757d; text-transform:uppercase;
+                 letter-spacing:.5px; margin-bottom:4px; }
+    .kpi-value { font-size:1.6rem; font-weight:700; line-height:1.1; }
+    .kpi-unit  { font-size:.72rem; color:#6c757d; margin-top:2px; }
+
+    /* Tab pills */
+    .nav-pills .nav-link.active { background-color:#0d6efd; }
+
+    /* Compare badge */
+    .ratio-high   { background:#ff6b35 !important; }
+    .ratio-mid    { background:#f0a500 !important; }
+    .ratio-ok     { background:#198754 !important; }
+
+    /* Info box */
+    .info-box { background:#e8f0fe; border:1px solid #c5d3fb; }
+    .env-info-box { background:#fef9ec; border:1px solid #fde68a; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-primary">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">
+      <i class="bi bi-cpu me-2"></i>ניתוח אמינות – MIL-STD-217F &amp; יצרנים
+    </span>
+    <span class="text-white-50 small">Dual Reliability Analysis Tool</span>
+  </div>
+</nav>
+
+<div class="container mt-4">
+
+  <!-- STEPPER -->
+  <div class="stepper mb-4">
+    <div class="step active" id="step1-ind">
+      <div class="step-circle">1</div>
+      <div class="step-label">העלאת BOM</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step2-ind">
+      <div class="step-circle">2</div>
+      <div class="step-label">תנאי חישוב</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step3-ind">
+      <div class="step-circle">3</div>
+      <div class="step-label">תוצאות</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step4-ind">
+      <div class="step-circle">4</div>
+      <div class="step-label">דוח Word</div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 1: Upload BOM ────────────── -->
+  <div id="panel-1" class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white fw-semibold">
+      <i class="bi bi-file-earmark-spreadsheet me-2"></i>שלב 1 – העלאת קובץ BOM
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-7">
+          <p class="text-muted small mb-2">
+            העלה קובץ BOM בפורמט <strong>XLSX</strong> או <strong>CSV</strong>.
+            עמודות נדרשות: כמות, תיאור, יצרן, מק"ט. עמודת RefDes אופציונלית.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">בחר קובץ BOM:</label>
+            <input class="form-control" type="file" id="bomFile"
+                   accept=".csv,.xlsx,.xls">
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="uploadBom()">
+              <i class="bi bi-upload me-1"></i>העלה
+            </button>
+            <a href="/sample_bom" class="btn btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>BOM לדוגמה
+            </a>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="info-box p-3 rounded">
+            <h6 class="fw-bold small"><i class="bi bi-info-circle me-1"></i>עמודות נתמכות</h6>
+            <table class="table table-sm table-bordered mb-0 small">
+              <thead class="table-light">
+                <tr><th>שם עמודה</th><th>חובה?</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Quan. / Qty / Quantity</td><td>✓</td></tr>
+                <tr><td>Description / Desc</td><td>✓</td></tr>
+                <tr><td>Mfg / Manufacturer</td><td>✓</td></tr>
+                <tr><td>Mfg Part No. / PN</td><td>✓</td></tr>
+                <tr><td>RefDes / Ref</td><td></td></tr>
+                <tr><td>Value / Package</td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOM preview -->
+      <div id="bom-preview" class="mt-3 d-none">
+        <div class="alert alert-success d-flex align-items-center py-2">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <span id="bom-summary"></span>
+        </div>
+        <div class="table-responsive" style="max-height:200px;overflow-y:auto;">
+          <table class="table table-sm table-striped table-bordered" id="preview-table">
+            <thead class="table-primary"></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="btn btn-success mt-2" onclick="goToStep2()">
+          המשך להגדרת תנאי חישוב <i class="bi bi-arrow-left ms-1"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 2: Conditions ────────────── -->
+  <div id="panel-2" class="card shadow-sm mb-4 d-none">
+    <div class="card-header bg-primary text-white fw-semibold">
+      <i class="bi bi-sliders me-2"></i>שלב 2 – תנאי חישוב ופרטי פרויקט
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+        <!-- Left: conditions -->
+        <div class="col-md-6">
+          <h6 class="fw-bold mb-3 text-primary">
+            <i class="bi bi-thermometer-half me-1"></i>תנאי הפעלה
+          </h6>
+
+          <div class="mb-3">
+            <label class="form-label">סביבת הפעלה (MIL-217F)</label>
+            <select class="form-select" id="envCode">
+              {% for code, label in environments.items() %}
+              <option value="{{ code }}" {% if code == 'GF' %}selected{% endif %}>
+                {{ code }} – {{ environments_he[code] }} ({{ label }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">
+              טמפרטורת סביבה מרבית (°C)
+              <span class="badge bg-secondary ms-1" id="temp-badge">40°C</span>
+            </label>
+            <input type="range" class="form-range" id="tAmbient"
+                   min="0" max="125" step="5" value="40"
+                   oninput="document.getElementById('temp-badge').textContent=this.value+'°C'">
+            <div class="d-flex justify-content-between text-muted small">
+              <span>0°C</span><span>25°C</span><span>55°C</span>
+              <span>85°C</span><span>125°C</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">רמת איכות (MIL-217F)</label>
+            <select class="form-select" id="qualityLevel">
+              {% for code, label in quality_levels.items() %}
+              <option value="{{ code }}" {% if code == 'C' %}selected{% endif %}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">
+              יחס עקה – Stress Ratio
+              <span class="badge bg-secondary ms-1" id="stress-badge">50%</span>
+            </label>
+            <input type="range" class="form-range" id="stressRatio"
+                   min="0.1" max="1.0" step="0.05" value="0.5"
+                   oninput="document.getElementById('stress-badge').textContent=
+                     Math.round(this.value*100)+'%'">
+          </div>
+
+          <div class="env-info-box p-2 rounded small" id="env-explain">
+            <strong id="env-code-label">GF</strong> –
+            <span id="env-explain-text">Ground Fixed: ציוד קרקעי קבוע, מבנה מוגן</span>
+          </div>
+        </div>
+
+        <!-- Right: project info -->
+        <div class="col-md-6">
+          <h6 class="fw-bold mb-3 text-primary">
+            <i class="bi bi-file-earmark-word me-1"></i>פרטי פרויקט לדוח
+          </h6>
+          <div class="mb-2">
+            <label class="form-label small">שם פרויקט</label>
+            <input type="text" class="form-control form-control-sm" id="projectName"
+                   placeholder="לדוגמה: SPWR Board Rev3">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">מספר מסמך</label>
+            <input type="text" class="form-control form-control-sm" id="docNumber"
+                   value="REL-001" placeholder="REL-2026-001">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">הוכן על ידי</label>
+            <input type="text" class="form-control form-control-sm" id="preparedBy"
+                   placeholder="שם המהנדס">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">גרסה</label>
+            <input type="text" class="form-control form-control-sm" id="revision"
+                   value="A" style="width:80px">
+          </div>
+
+          <div class="alert alert-info small mt-3 py-2">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>ניתוח כפול:</strong> המערכת תחשב בו-זמנית שני ניתוחים:
+            <ul class="mb-0 mt-1">
+              <li>MIL-STD-217F Notice 2 – לפי גורמי סביבה ואיכות</li>
+              <li>נתוני יצרנים (TI, Analog, Murata, Vishay...) – לפי FIT@25°C + Arrhenius</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <button class="btn btn-success btn-lg" onclick="runAnalysis()">
+          <i class="bi bi-lightning-charge-fill me-2"></i>הפעל ניתוח אמינות כפול
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 3: Results ────────────── -->
+  <div id="panel-3" class="card shadow-sm mb-4 d-none">
+    <div class="card-header bg-success text-white fw-semibold">
+      <i class="bi bi-bar-chart-fill me-2"></i>שלב 3 – תוצאות ניתוח אמינות
+    </div>
+    <div class="card-body">
+
+      <!-- Summary KPI row -->
+      <div class="row g-3 mb-3">
+        <!-- MIL-217F column -->
+        <div class="col-12">
+          <h6 class="text-primary fw-bold mb-2">
+            <i class="bi bi-shield-check me-1"></i>סיכום MTBF
+          </h6>
+        </div>
+        <!-- MIL KPIs -->
+        <div class="col-md-6">
+          <div class="card border-primary">
+            <div class="card-header bg-primary text-white py-1 small fw-semibold">
+              MIL-STD-217F Notice 2
+            </div>
+            <div class="card-body py-2">
+              <div class="row g-2 text-center">
+                <div class="col-6">
+                  <div class="kpi-label">λ_sys</div>
+                  <div class="kpi-value text-danger" id="mil-kpi-lambda">—</div>
+                  <div class="kpi-unit">כשלים/10⁶ שע'</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">FIT</div>
+                  <div class="kpi-value text-warning" id="mil-kpi-fit">—</div>
+                  <div class="kpi-unit">כשלים/10⁹ שע'</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">MTBF</div>
+                  <div class="kpi-value text-success" id="mil-kpi-mtbf">—</div>
+                  <div class="kpi-unit">שעות</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">MTBF</div>
+                  <div class="kpi-value text-primary" id="mil-kpi-years">—</div>
+                  <div class="kpi-unit">שנים</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- MFR KPIs -->
+        <div class="col-md-6">
+          <div class="card border-success">
+            <div class="card-header bg-success text-white py-1 small fw-semibold">
+              נתוני יצרנים (FIT Database)
+            </div>
+            <div class="card-body py-2">
+              <div class="row g-2 text-center">
+                <div class="col-6">
+                  <div class="kpi-label">λ_sys</div>
+                  <div class="kpi-value text-danger" id="mfr-kpi-lambda">—</div>
+                  <div class="kpi-unit">כשלים/10⁶ שע'</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">FIT</div>
+                  <div class="kpi-value text-warning" id="mfr-kpi-fit">—</div>
+                  <div class="kpi-unit">כשלים/10⁹ שע'</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">MTBF</div>
+                  <div class="kpi-value text-success" id="mfr-kpi-mtbf">—</div>
+                  <div class="kpi-unit">שעות</div>
+                </div>
+                <div class="col-6">
+                  <div class="kpi-label">MTBF</div>
+                  <div class="kpi-value text-primary" id="mfr-kpi-years">—</div>
+                  <div class="kpi-unit">שנים</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ratio card -->
+        <div class="col-12">
+          <div class="alert alert-secondary py-2 mb-0" id="ratio-alert">
+            <i class="bi bi-arrow-left-right me-1"></i>
+            <strong>יחס MIL-217F / יצרנים: </strong>
+            <span id="ratio-value" class="fw-bold">—</span>
+            <span id="ratio-desc" class="text-muted ms-2"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs for the detailed tables -->
+      <ul class="nav nav-pills mb-3" id="result-tabs">
+        <li class="nav-item">
+          <button class="nav-link active" onclick="showTab('mil217')">
+            <i class="bi bi-shield-check me-1"></i>MIL-STD-217F
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" onclick="showTab('mfr')">
+            <i class="bi bi-building me-1"></i>נתוני יצרנים
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" onclick="showTab('compare')">
+            <i class="bi bi-arrow-left-right me-1"></i>השוואה
+          </button>
+        </li>
+      </ul>
+
+      <!-- MIL-217F table -->
+      <div id="tab-mil217">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-bordered table-hover"
+                 id="mil217-table">
+            <thead class="table-dark">
+              <tr>
+                <th>RefDes</th>
+                <th>מק"ט / Part#</th>
+                <th>יצרן</th>
+                <th>תיאור</th>
+                <th>סוג</th>
+                <th>כמות</th>
+                <th>π_T</th>
+                <th>π_Q</th>
+                <th>π_E</th>
+                <th>מודל</th>
+                <th>λ_p יחידה</th>
+                <th>λ_p סה"כ</th>
+              </tr>
+            </thead>
+            <tbody id="mil217-tbody"></tbody>
+            <tfoot>
+              <tr class="table-primary fw-bold">
+                <td colspan="11" class="text-end">סה"כ מערכת:</td>
+                <td id="mil217-total">—</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Manufacturer data table -->
+      <div id="tab-mfr" class="d-none">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-bordered table-hover"
+                 id="mfr-table">
+            <thead class="table-success">
+              <tr>
+                <th>RefDes</th>
+                <th>מק"ט / Part#</th>
+                <th>יצרן</th>
+                <th>תיאור</th>
+                <th>קטגוריה</th>
+                <th>כמות</th>
+                <th>FIT@25°C</th>
+                <th>FIT@T</th>
+                <th>λ_p יחידה</th>
+                <th>λ_p סה"כ</th>
+                <th>מקור</th>
+              </tr>
+            </thead>
+            <tbody id="mfr-tbody"></tbody>
+            <tfoot>
+              <tr class="table-success fw-bold">
+                <td colspan="9" class="text-end">סה"כ מערכת:</td>
+                <td id="mfr-total">—</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Comparison table -->
+      <div id="tab-compare" class="d-none">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-hover"
+                 id="compare-table">
+            <thead class="table-secondary">
+              <tr>
+                <th>RefDes</th>
+                <th>תיאור</th>
+                <th>סוג</th>
+                <th>כמות</th>
+                <th>λ MIL-217F<br><small>(יחידה)</small></th>
+                <th>λ יצרנים<br><small>(יחידה)</small></th>
+                <th>יחס<br>MIL/יצרן</th>
+                <th>λ_total MIL-217F</th>
+                <th>λ_total יצרנים</th>
+                <th>הפרש %</th>
+                <th>מקור</th>
+              </tr>
+            </thead>
+            <tbody id="compare-tbody"></tbody>
+            <tfoot>
+              <tr class="table-secondary fw-bold">
+                <td colspan="7" class="text-end">סה"כ מערכת:</td>
+                <td id="compare-mil-total">—</td>
+                <td id="compare-mfr-total">—</td>
+                <td id="compare-pct-total">—</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="mt-2 small text-muted">
+          <span class="badge" style="background:#ff6b35">■</span> יחס &gt; 5x (פער גדול) &nbsp;
+          <span class="badge bg-warning text-dark">■</span> יחס 2–5x &nbsp;
+          <span class="badge bg-success">■</span> יחס &lt; 2x (עקבי)
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <button class="btn btn-primary" onclick="goToStep4()">
+          <i class="bi bi-file-word-fill me-2"></i>צור דוח Word השוואתי
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 4: Word Report ────────────── -->
+  <div id="panel-4" class="card shadow-sm mb-4 d-none">
+    <div class="card-header bg-info text-white fw-semibold">
+      <i class="bi bi-file-word-fill me-2"></i>שלב 4 – דוח Word
+    </div>
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col-md-7">
+          <h5>הדוח מוכן!</h5>
+          <p class="text-muted">
+            הדוח ההשוואתי כולל את שני הניתוחים בנפרד ואת טבלת ההשוואה ביניהם.
+          </p>
+          <div class="mb-3">
+            <span class="badge bg-secondary me-1">דף שער</span>
+            <span class="badge bg-secondary me-1">תוכן עניינים</span>
+            <span class="badge bg-secondary me-1">מבוא</span>
+            <span class="badge bg-secondary me-1">שיטות חישוב</span>
+            <span class="badge bg-secondary me-1">הנחות</span>
+            <span class="badge bg-secondary me-1">סימוכין</span>
+            <span class="badge bg-primary me-1">טבלת MIL-217F</span>
+            <span class="badge bg-success me-1">טבלת יצרנים</span>
+            <span class="badge bg-warning text-dark me-1">טבלת השוואה</span>
+            <span class="badge bg-secondary me-1">MTBF מסכם</span>
+            <span class="badge bg-secondary me-1">המלצות</span>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="downloadReport()">
+            <i class="bi bi-download me-2"></i>הורד דוח Word (.docx)
+          </button>
+        </div>
+        <div class="col-md-5 text-center">
+          <i class="bi bi-file-earmark-word" style="font-size:5rem;color:#1F3A6E;"></i>
+          <div class="mt-2 fw-bold">Reliability_Report_Comparison.docx</div>
+          <div class="text-muted small">כולל MIL-217F + נתוני יצרנים + השוואה</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spinner -->
+  <div id="spinner" class="d-none text-center my-4">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+    <div class="mt-2 fw-semibold" id="spinner-msg">מעבד...</div>
+  </div>
+
+  <!-- Error -->
+  <div id="error-alert" class="alert alert-danger d-none mt-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <span id="error-msg"></span>
+  </div>
+
+</div><!-- /container -->
+
+<footer class="text-center text-muted small py-3 mt-4 border-top">
+  MIL-STD-217F Notice 2 Dual Reliability Analyzer &nbsp;|&nbsp;
+  Failure rates in failures/10⁶ hours &nbsp;|&nbsp;
+  Not for flight-critical use without independent verification
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const ENV_EXPLAIN = {
+  GB:  'Ground Benign – ציוד שולחני מוגן, ללא רטט, אקלים מבוקר',
+  GF:  'Ground Fixed – ציוד קרקעי קבוע, מבנה מוגן, תנאים מתונים',
+  GM:  'Ground Mobile – ציוד נייד בשטח, רטט וזעזועים, טמפרטורות קיצוניות',
+  NS:  'Naval Sheltered – ציוד ימי מוגן, לחות גבוהה, מלח',
+  NU:  'Naval Unsheltered – חשוף לתנאי ים, גשם, מלח',
+  AIF: 'Airborne Inhabited Fighter – אוויוניקה במטוס לוחם עם צוות',
+  AUF: 'Airborne Uninhabited Fighter – UAS/RPV, ללא צוות',
+  AIC: 'Airborne Inhabited Cargo – מטוס מטען/נוסעים',
+  ARW: 'Airborne Rotary Wing – מסוק, רטט חזק',
+  SF:  'Space Flight – חלל, קרינה, ואקום',
+  MF:  'Missile Flight – טיל בטיסה, עומסי G גבוהים',
+  ML:  'Missile Launch – שיגור טיל, רעידות קיצוניות',
+  CL:  'Cannon Launch – פגז/רסס, הלם קיצוני',
+};
+
+document.getElementById('envCode').addEventListener('change', function() {
+  document.getElementById('env-code-label').textContent = this.value;
+  document.getElementById('env-explain-text').textContent =
+    ENV_EXPLAIN[this.value] || '';
+});
+
+function showSpinner(msg) {
+  document.getElementById('spinner').classList.remove('d-none');
+  document.getElementById('spinner-msg').textContent = msg || 'מעבד...';
+}
+function hideSpinner() {
+  document.getElementById('spinner').classList.add('d-none');
+}
+function showError(msg) {
+  const el = document.getElementById('error-alert');
+  document.getElementById('error-msg').textContent = msg;
+  el.classList.remove('d-none');
+  el.scrollIntoView({behavior:'smooth'});
+}
+function hideError() {
+  document.getElementById('error-alert').classList.add('d-none');
+}
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById('step' + i + '-ind');
+    el.classList.toggle('active', i === n);
+    el.classList.toggle('done',   i < n);
+  });
+}
+
+function showTab(name) {
+  ['mil217','mfr','compare'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('d-none', t !== name);
+  });
+  document.querySelectorAll('#result-tabs .nav-link').forEach((btn, i) => {
+    const names = ['mil217','mfr','compare'];
+    btn.classList.toggle('active', names[i] === name);
+  });
+}
+
+// ── Upload BOM ──────────────────────────────────────────────────────────────
+
+async function uploadBom() {
+  hideError();
+  const fi = document.getElementById('bomFile');
+  if (!fi.files.length) { showError('אנא בחר קובץ BOM תחילה'); return; }
+
+  const form = new FormData();
+  form.append('bom_file', fi.files[0]);
+  showSpinner('קורא קובץ BOM...');
+  try {
+    const resp = await fetch('/upload', {method:'POST', body: form});
+    const data = await resp.json();
+    hideSpinner();
+    if (data.error) { showError(data.error); return; }
+
+    document.getElementById('bom-summary').textContent =
+      `קובץ נטען בהצלחה – ${data.rows} רכיבים נמצאו`;
+
+    const thead = document.querySelector('#preview-table thead');
+    const tbody = document.querySelector('#preview-table tbody');
+    thead.innerHTML = '<tr>' + data.columns.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+    tbody.innerHTML = data.preview.map(row =>
+      '<tr>' + data.columns.map(c => `<td>${row[c]??''}</td>`).join('') + '</tr>'
+    ).join('');
+    document.getElementById('bom-preview').classList.remove('d-none');
+    setStep(1);
+  } catch(e) {
+    hideSpinner();
+    showError('שגיאת רשת: ' + e.message);
+  }
+}
+
+function goToStep2() {
+  document.getElementById('panel-2').classList.remove('d-none');
+  document.getElementById('panel-2').scrollIntoView({behavior:'smooth'});
+  setStep(2);
+}
+
+// ── Run Analysis ────────────────────────────────────────────────────────────
+
+async function runAnalysis() {
+  hideError();
+  const payload = {
+    t_ambient:    parseFloat(document.getElementById('tAmbient').value),
+    env_code:     document.getElementById('envCode').value,
+    quality:      document.getElementById('qualityLevel').value,
+    stress_ratio: parseFloat(document.getElementById('stressRatio').value),
+  };
+
+  window._projectInfo = {
+    project_name: document.getElementById('projectName').value,
+    doc_number:   document.getElementById('docNumber').value,
+    prepared_by:  document.getElementById('preparedBy').value,
+    revision:     document.getElementById('revision').value,
+  };
+
+  showSpinner('מחשב ניתוח כפול: MIL-217F ונתוני יצרנים...');
+  try {
+    const resp = await fetch('/analyse', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    hideSpinner();
+    if (data.error) { showError(data.error); return; }
+
+    renderResults(data);
+    document.getElementById('panel-3').classList.remove('d-none');
+    document.getElementById('panel-3').scrollIntoView({behavior:'smooth'});
+    setStep(3);
+  } catch(e) {
+    hideSpinner();
+    showError('שגיאת חישוב: ' + e.message);
+  }
+}
+
+// ── Render results ──────────────────────────────────────────────────────────
+
+function fmt(v, dec) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return Number(v).toFixed(dec ?? 5);
+}
+
+function renderResults(data) {
+  const mil = data.mil217;
+  const mfr = data.mfr;
+
+  // KPI cards
+  document.getElementById('mil-kpi-lambda').textContent = fmt(mil.total_lambda, 4);
+  document.getElementById('mil-kpi-fit').textContent    = fmt(mil.fit_rate,     1);
+  document.getElementById('mil-kpi-mtbf').textContent   =
+    Math.round(mil.mtbf_hours).toLocaleString('he-IL');
+  document.getElementById('mil-kpi-years').textContent  = fmt(mil.mtbf_years, 1);
+
+  document.getElementById('mfr-kpi-lambda').textContent = fmt(mfr.total_lambda, 4);
+  document.getElementById('mfr-kpi-fit').textContent    = fmt(mfr.fit_rate,     1);
+  document.getElementById('mfr-kpi-mtbf').textContent   =
+    Math.round(mfr.mtbf_hours).toLocaleString('he-IL');
+  document.getElementById('mfr-kpi-years').textContent  = fmt(mfr.mtbf_years, 1);
+
+  // Ratio banner
+  const ratio = mfr.total_lambda > 0
+    ? mil.total_lambda / mfr.total_lambda : null;
+  const ratioEl  = document.getElementById('ratio-value');
+  const ratioAlertEl = document.getElementById('ratio-alert');
+  if (ratio !== null) {
+    ratioEl.textContent = ratio.toFixed(2) + 'x';
+    let cls = 'alert-secondary';
+    let desc = '';
+    if (ratio > 5)      { cls = 'alert-danger';  desc = '(פער גדול – MIL-217F שמרני מאוד)'; }
+    else if (ratio > 2) { cls = 'alert-warning'; desc = '(MIL-217F שמרני)'; }
+    else if (ratio > 1.2){ cls = 'alert-info';   desc = '(MIL-217F מעט שמרני)'; }
+    else                { cls = 'alert-success'; desc = '(שני הניתוחים עקביים)'; }
+    ratioAlertEl.className = 'alert py-2 mb-0 ' + cls;
+    document.getElementById('ratio-desc').textContent = desc;
+  } else {
+    ratioEl.textContent = '—';
+  }
+
+  // ── MIL-217F table ──────────────────────────────────────
+  let milTotal = 0;
+  document.getElementById('mil217-tbody').innerHTML = data.results.map(r => {
+    const d   = r.mil217_details || {};
+    const piT = d.piT !== undefined ? Number(d.piT).toFixed(3) : '—';
+    const piQ = d.piQ !== undefined ? d.piQ : '—';
+    const piE = d.piE !== undefined ? d.piE : '—';
+    milTotal += (r.mil217_lambda_total || 0);
+    return `<tr>
+      <td class="fw-semibold small">${r.ref_des}</td>
+      <td class="small">${r.part_number}</td>
+      <td class="small">${r.manufacturer}</td>
+      <td class="small">${r.description}</td>
+      <td><span class="badge bg-primary">${r.comp_type}</span></td>
+      <td class="text-center">${r.quantity}</td>
+      <td class="text-center small">${piT}</td>
+      <td class="text-center small">${piQ}</td>
+      <td class="text-center small">${piE}</td>
+      <td class="small">${(d.model||'').replace('MIL-217F ','')}</td>
+      <td class="text-end font-monospace small">${fmt(r.mil217_lambda_p)}</td>
+      <td class="text-end font-monospace fw-bold small">${fmt(r.mil217_lambda_total)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('mil217-total').textContent = fmt(milTotal);
+
+  // ── Manufacturer table ──────────────────────────────────
+  let mfrTotal = 0;
+  document.getElementById('mfr-tbody').innerHTML = data.results.map(r => {
+    mfrTotal += (r.mfr_lambda_total || 0);
+    const srcShort = (r.mfr_source||'').split('–')[0].trim().substring(0,30);
+    const srcHtml = r.mfr_url
+      ? `<a href="${r.mfr_url}" target="_blank" rel="noopener" class="text-muted text-decoration-none" title="${r.mfr_source||''}">${srcShort}&nbsp;<i class="bi bi-box-arrow-up-right"></i></a>`
+      : `<span class="text-muted" title="${r.mfr_source||''}">${srcShort}</span>`;
+    return `<tr>
+      <td class="fw-semibold small">${r.ref_des}</td>
+      <td class="small">${r.part_number}</td>
+      <td class="small">${r.manufacturer}</td>
+      <td class="small">${r.description}</td>
+      <td><span class="badge bg-success">${r.mfr_category||'—'}</span></td>
+      <td class="text-center">${r.quantity}</td>
+      <td class="text-center small">${fmt(r.mfr_fit_25c,1)}</td>
+      <td class="text-center small">${fmt(r.mfr_fit_at_t,1)}</td>
+      <td class="text-end font-monospace small">${fmt(r.mfr_lambda_p)}</td>
+      <td class="text-end font-monospace fw-bold small">${fmt(r.mfr_lambda_total)}</td>
+      <td class="small">${srcHtml}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('mfr-total').textContent = fmt(mfrTotal);
+
+  // ── Comparison table ────────────────────────────────────
+  let cmpMilTotal = 0, cmpMfrTotal = 0;
+  document.getElementById('compare-tbody').innerHTML = data.results.map(r => {
+    const milT = r.mil217_lambda_total || 0;
+    const mfrT = r.mfr_lambda_total   || 0;
+    const ratio2 = r.ratio_mil_to_mfr;
+    const pct   = mfrT > 0 ? ((milT - mfrT) / mfrT * 100) : null;
+    cmpMilTotal += milT;
+    cmpMfrTotal += mfrT;
+
+    let rowCls = '';
+    let badgeCls = 'bg-success ratio-ok';
+    if (ratio2 !== null) {
+      if (ratio2 > 5)      { rowCls = 'table-danger';  badgeCls = 'bg-danger ratio-high'; }
+      else if (ratio2 > 2) { rowCls = 'table-warning'; badgeCls = 'bg-warning text-dark ratio-mid'; }
+    }
+
+    const ratioStr = ratio2 !== null
+      ? `<span class="badge ${badgeCls}">${ratio2.toFixed(2)}x</span>` : '—';
+    const pctStr   = pct !== null
+      ? `<span class="${pct > 0 ? 'text-danger' : 'text-success'}">${pct > 0 ? '+' : ''}${pct.toFixed(1)}%</span>`
+      : '—';
+
+    const srcLink = r.mfr_url
+      ? `<a href="${r.mfr_url}" target="_blank" rel="noopener" title="${r.mfr_source||''}"><i class="bi bi-link-45deg fs-5"></i></a>`
+      : '';
+    return `<tr class="${rowCls}">
+      <td class="fw-semibold small">${r.ref_des}</td>
+      <td class="small">${r.description}</td>
+      <td><span class="badge bg-secondary">${r.comp_type}</span></td>
+      <td class="text-center">${r.quantity}</td>
+      <td class="text-end font-monospace small">${fmt(r.mil217_lambda_p)}</td>
+      <td class="text-end font-monospace small">${fmt(r.mfr_lambda_p)}</td>
+      <td class="text-center">${ratioStr}</td>
+      <td class="text-end font-monospace small">${fmt(milT)}</td>
+      <td class="text-end font-monospace small">${fmt(mfrT)}</td>
+      <td class="text-end small">${pctStr}</td>
+      <td class="text-center">${srcLink}</td>
+    </tr>`;
+  }).join('');
+
+  const pctTotal = cmpMfrTotal > 0
+    ? ((cmpMilTotal - cmpMfrTotal) / cmpMfrTotal * 100) : null;
+  document.getElementById('compare-mil-total').textContent = fmt(cmpMilTotal);
+  document.getElementById('compare-mfr-total').textContent = fmt(cmpMfrTotal);
+  document.getElementById('compare-pct-total').textContent =
+    pctTotal !== null ? `${pctTotal > 0 ? '+' : ''}${pctTotal.toFixed(1)}%` : '—';
+}
+
+function goToStep4() {
+  document.getElementById('panel-4').classList.remove('d-none');
+  document.getElementById('panel-4').scrollIntoView({behavior:'smooth'});
+  setStep(4);
+}
+
+async function downloadReport() {
+  showSpinner('יוצר דוח Word השוואתי...');
+  try {
+    const resp = await fetch('/report', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(window._projectInfo || {}),
+    });
+    hideSpinner();
+    if (!resp.ok) { showError('שגיאה בדוח: ' + await resp.text()); return; }
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'Reliability_Report_Comparison.docx';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    hideSpinner();
+    showError('שגיאת הורדה: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

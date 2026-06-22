@@ -1,0 +1,162 @@
+/* MIL-217F Analyzer – Custom Styles */
+
+body {
+  background-color: #f4f6fb;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  direction: rtl;
+}
+
+/* ── Stepper ─────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.step-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #dee2e6;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all .3s;
+}
+
+.step.active .step-circle {
+  background: #0d6efd;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(13,110,253,.25);
+}
+
+.step.done .step-circle {
+  background: #198754;
+  color: #fff;
+}
+
+.step-label {
+  font-size: .75rem;
+  margin-top: 5px;
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.step.active .step-label { color: #0d6efd; }
+.step.done  .step-label { color: #198754; }
+
+.step-line {
+  flex: 1;
+  height: 3px;
+  background: #dee2e6;
+  margin-bottom: 18px;
+}
+
+/* ── Cards ───────────────────────── */
+.card {
+  border-radius: 12px;
+  border: none;
+}
+
+.card-header {
+  border-radius: 12px 12px 0 0 !important;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* ── KPI Cards ───────────────────── */
+.kpi-card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e0e7ef;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.kpi-label {
+  font-size: .75rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.kpi-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-family: 'Courier New', monospace;
+  margin: 4px 0;
+}
+
+.kpi-unit {
+  font-size: .7rem;
+  color: #9aa5b1;
+}
+
+/* ── Info box ────────────────────── */
+.info-box {
+  background: #e8f0fe;
+  border: 1px solid #c5d8ff;
+}
+
+.env-info-box {
+  background: #fff8e1;
+  border-color: #ffe082 !important;
+}
+
+/* ── Report preview ──────────────── */
+.report-preview {
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #c0cfe0;
+}
+
+/* ── Table tweaks ────────────────── */
+#results-table {
+  font-size: .82rem;
+}
+
+#results-table th {
+  vertical-align: middle;
+  text-align: center;
+}
+
+#results-table .font-monospace {
+  font-size: .80rem;
+}
+
+/* ── Navbar ──────────────────────── */
+.navbar-brand {
+  font-size: 1.1rem;
+}
+
+/* ── Spinner overlay ─────────────── */
+#spinner .spinner-border {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-width: .35em;
+}
+
+/* ── Range inputs ────────────────── */
+.form-range::-webkit-slider-thumb {
+  background: #0d6efd;
+}
+
+/* ── Badges ──────────────────────── */
+.badge {
+  font-size: .7rem;
+}
+
+/* ── Footer ──────────────────────── */
+footer {
+  font-size: .78rem;
+}

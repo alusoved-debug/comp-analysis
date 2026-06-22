@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.docx
+uploads/_last_*.json
+uploads/*.xlsx
+uploads/*.xls
+!uploads/sample*.csv
+!uploads/empty.csv
