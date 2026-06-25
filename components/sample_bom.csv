@@ -1,0 +1,23 @@
+﻿RefDes,PartNumber,Manufacturer,Description,Quantity,Value,Package
+U1,TMS320F28335PGFA,Texas Instruments,DSP Microcontroller 32-bit,1,,176-LQFP
+U2,TLV62568PDRLR,Texas Instruments,DC-DC Buck Converter,1,,SOT-563
+U3,OPA2134UA,Texas Instruments,Op-Amp Audio Dual,2,,8-SOIC
+U4,AD7175-2BRUZ,Analog Devices,ADC 24-bit Sigma Delta,1,,TSSOP-24
+U5,MAX232CPE+,Maxim,RS232 Transceiver,1,,16-DIP
+Q1,BSS138,Nexperia,MOSFET N-ch 50V 200mA,4,,SOT-23
+Q2,BC847C,Nexperia,BJT NPN 45V,6,,SOT-23
+D1,BAT54A,Nexperia,Schottky Diode 30V 200mA,10,,SOT-23
+D2,SMBJ5.0A,Vishay,TVS Diode 5V,2,,SMB
+D3,BZX84C5V6,Nexperia,Zener 5.6V 300mW,4,,SOT-23
+R1,RC0402FR-0710KL,Yageo,Film Resistor 10K 1%,20,10K,0402
+R2,RC0402FR-071KL,Yageo,Film Resistor 1K 1%,15,1K,0402
+R3,RC0402FR-07100KL,Yageo,Film Resistor 100K 1%,12,100K,0402
+C1,C0402C104K5RACTU,Kemet,Ceramic Cap 100nF 16V,30,100nF,0402
+C2,C1206C106K8PACTU,Kemet,Ceramic Cap 10uF 10V,10,10uF,1206
+C3,UVR1V470MED,Nichicon,Electrolytic 47uF 35V,5,47uF,Radial
+C4,TPSE476K035R0200,Vishay,Tantalum 47uF 35V,3,47uF,2917
+L1,LQW18AN22NG00D,Murata,Chip Inductor 22nH,6,22nH,0402
+L2,BOURNS-SRR1260-100Y,Bourns,Wirewound Power Inductor 10uH,2,10uH,SRR1260
+J1,5530843-1,TE Connectivity,USB Micro-B Connector 5-pin,1,,USB
+J2,67996-202HLF,Amphenol,Header 20-pin,1,,2x10
+Y1,ABLS2-8.000MHZ-D4Y-T,ABRACON,Crystal 8MHz,1,,HC-49
