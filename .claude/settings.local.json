@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-registry__search_mcp_registry",
+      "mcp__1f3a37ab-0f36-4729-9657-27169c639bfa__get_thread",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "WebSearch",
+      "WebFetch(domain:www.madadirot.co.il)",
+      "WebFetch(domain:yadata.yad2.co.il)",
+      "WebFetch(domain:www.madlan.co.il)",
+      "WebFetch(domain:www.mintz12.com)",
+      "WebFetch(domain:blog.yad2.co.il)",
+      "WebFetch(domain:www.apollogroup.co.il)"
+    ]
+  }
+}

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>בוט ניתוח תקלות</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #1a1d27;
+    --border: #2a2d3e;
+    --accent: #4f8ef7;
+    --accent2: #e94560;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    direction: rtl;
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+  header span {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  .dashboard {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--panel);
+    position: relative;
+  }
+  .upload-zone.drag { border-color: var(--accent); background: rgba(79,142,247,.06); }
+  .upload-zone input[type=file] { display: none; }
+  .upload-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .upload-btn, .sample-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: opacity .2s;
+  }
+  .upload-btn { background: var(--accent); color: #fff; }
+  .sample-btn { background: transparent; color: var(--accent); border: 1px solid var(--accent); text-decoration: none; }
+  .upload-btn:hover, .sample-btn:hover { opacity: .85; }
+
+  .api-banner {
+    background: rgba(79,142,247,.1);
+    border: 1px solid rgba(79,142,247,.35);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--accent);
+  }
+  .api-banner a { color: var(--accent); }
+  .api-banner.hidden { display: none; }
+
+  .upload-zone .icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-zone p { color: var(--muted); font-size: 14px; }
+  .upload-zone p strong { color: var(--text); }
+  .upload-zone .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 10px; padding: 6px 14px;
+    background: rgba(34,197,94,.15); color: var(--green);
+    border-radius: 20px; font-size: 13px; font-weight: 600;
+  }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+  }
+  .kpi .val { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .kpi .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kpi.green .val { color: var(--green); }
+  .kpi.red .val { color: var(--red); }
+  .kpi.yellow .val { color: var(--yellow); }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .chart-card h3 {
+    font-size: 13px; color: var(--muted); margin-bottom: 12px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .chart-card canvas { max-height: 220px; }
+
+  .table-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    overflow-x: auto;
+  }
+  .table-card h3 { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: rgba(79,142,247,.1); color: var(--accent);
+    padding: 8px 12px; text-align: right; font-weight: 600; font-size: 12px;
+  }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+
+  .section-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .section-card h3 {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-card h3 .icon { font-size: 18px; }
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .summary-box {
+    background: rgba(79,142,247,.08);
+    border: 1px solid rgba(79,142,247,.25);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  .summary-box li { margin-bottom: 6px; }
+  .rec-item {
+    display: flex; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-num {
+    min-width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .rec-body strong { display: block; margin-bottom: 3px; }
+  .rec-body span { color: var(--muted); font-size: 12px; }
+  .rec-tag {
+    display: inline-block; font-size: 10px; padding: 2px 8px;
+    border-radius: 10px; background: rgba(79,142,247,.15);
+    color: var(--accent); margin-top: 4px;
+  }
+  .problem-bar {
+    height: 6px; background: var(--border); border-radius: 3px;
+    margin-top: 6px; overflow: hidden;
+  }
+  .problem-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .problem-row { margin-bottom: 12px; }
+  .problem-row:last-child { margin-bottom: 0; }
+  .problem-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dash-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .dash-btn {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: var(--panel);
+    color: var(--text); transition: all .15s;
+  }
+  .dash-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .dash-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .dash-btn.primary:hover { opacity: .85; }
+
+  .placeholder { text-align: center; color: var(--muted); margin: auto; padding: 40px; }
+  .placeholder .big { font-size: 48px; margin-bottom: 12px; }
+  .placeholder p { font-size: 14px; line-height: 1.8; }
+
+  .chat-panel {
+    width: 400px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+  }
+  .chat-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chat-header .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg { max-width: 92%; font-size: 13.5px; line-height: 1.6; }
+  .msg.user { align-self: flex-start; }
+  .msg.bot { align-self: flex-end; }
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .user .bubble { background: var(--accent); color: #fff; border-bottom-left-radius: 4px; }
+  .bot .bubble { background: var(--bg); border: 1px solid var(--border); border-bottom-right-radius: 4px; }
+  .bot .bubble.typing { color: var(--muted); }
+
+  .suggestions {
+    padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .suggestion {
+    font-size: 11px;
+    padding: 5px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .suggestion:hover { border-color: var(--accent); color: var(--text); }
+
+  .chat-input-row {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+  textarea {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-family: inherit;
+    resize: none;
+    line-height: 1.4;
+    max-height: 120px;
+    direction: rtl;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .send-btn {
+    padding: 9px 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: opacity .2s;
+    align-self: flex-end;
+  }
+  .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column-reverse; }
+    .chat-panel { width: 100%; height: 50vh; border-right: none; border-top: 1px solid var(--border); }
+    .charts-row, .section-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔧 בוט ניתוח תקלות</h1>
+  <span>FRACAS · AS9100</span>
+</header>
+
+<div class="layout">
+
+  <div class="dashboard" id="dashboard">
+    <div class="api-banner hidden" id="apiBanner">
+      ℹ הצ'אט פועל ב<strong>מצב מקומי</strong> — ללא חשבון AI, על סמך הנתונים שהעלית.
+    </div>
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.XLSX,.XLS" onchange="handleFile(this.files[0])">
+      <div class="icon">📊</div>
+      <p><strong>גרור קובץ Excel לכאן</strong> או השתמש בכפתורים למטה</p>
+      <p>תומך בדוחות תקלות בעברית ובאנגלית (.xlsx / .xls)</p>
+      <div class="upload-actions">
+        <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 בחר קובץ Excel</button>
+        <a class="sample-btn" href="/sample" download>⬇ הורד קובץ דוגמה</a>
+      </div>
+      <div id="uploadStatus"></div>
+    </div>
+
+    <div id="results" style="display:none; flex-direction:column; gap:16px;">
+      <div class="dash-actions">
+        <button class="dash-btn" onclick="askFromDash('דוח מסכם')">📋 דוח מסכם בצ'אט</button>
+        <button class="dash-btn primary" onclick="downloadSummary()">⬇ הורד דוח מסכם</button>
+      </div>
+      <div class="section-card" id="summaryCard">
+        <h3><span class="icon">📋</span> דוח מסכם</h3>
+        <div class="summary-box" id="summaryBox"></div>
+      </div>
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="section-grid">
+        <div class="section-card" id="mainProblemsCard">
+          <h3><span class="icon">🎯</span> סוג הבעיות העיקריות</h3>
+          <div id="mainProblems"></div>
+        </div>
+        <div class="section-card" id="rcaCard">
+          <h3><span class="icon">🔍</span> ניתוח בעיות שורש</h3>
+          <div id="rcaSection"></div>
+        </div>
+      </div>
+      <div class="section-grid">
+        <div class="section-card" id="recurringCard">
+          <h3><span class="icon">🔁</span> תקלות חוזרות</h3>
+          <div id="recurringSection"></div>
+        </div>
+        <div class="section-card" id="recsCard">
+          <h3><span class="icon">✅</span> המלצות לביצוע</h3>
+          <div id="recsSection"></div>
+        </div>
+      </div>
+      <div class="charts-row" id="chartsRow"></div>
+      <div class="table-card" id="paretoTable"></div>
+    </div>
+
+    <div class="placeholder" id="placeholder">
+      <div class="big">🛡</div>
+      <p>העלה קובץ Excel עם דוחות תקלות לקבלת ניתוח מלא.<br>
+         ניתן גם לשוחח עם הבוט על FRACAS, RCA ואיכות — גם ללא קובץ.</p>
+    </div>
+  </div>
+
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="dot"></div>
+      עוזר ניתוח תקלות
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg bot">
+        <div class="bubble">שלום! אני עוזר לניתוח תקלות.
+העלה קובץ Excel ושאל על תקלות נפוצות, אחוז סגירה, פריטו והמלצות — הכל עובד ללא חשבון AI.</div>
+      </div>
+    </div>
+    <div class="suggestions" id="suggestions">
+      <span class="suggestion" onclick="askSuggestion(this)">ניתוח בעיות שורש</span>
+      <span class="suggestion" onclick="askSuggestion(this)">תקלות חוזרות</span>
+      <span class="suggestion" onclick="askSuggestion(this)">סוג הבעיות העיקריות</span>
+      <span class="suggestion" onclick="askSuggestion(this)">המלצות לביצוע</span>
+      <span class="suggestion" onclick="askSuggestion(this)">דוח מסכם</span>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chatInput" rows="2" placeholder="שאל על תקלות, מגמות, RCA…" onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let sessionId = null;
+let chatHistory = [];
+let charts = {};
+let currentAnalysis = null;
+
+fetch('/api/status').then(r => r.json()).then(s => {
+  if (s.mode === 'local') document.getElementById('apiBanner').classList.remove('hidden');
+}).catch(() => {});
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+async function handleFile(file) {
+  if (!file) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx', 'xls'].includes(ext)) {
+    document.getElementById('uploadStatus').innerHTML =
+      '<span style="color:var(--red)">⚠ יש לבחור קובץ Excel (.xlsx או .xls)</span>';
+    return;
+  }
+
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = '<span class="spinner"></span> מנתח…';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch('/upload', { method: 'POST', body: fd });
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      status.innerHTML = '<span style="color:var(--red)">⚠ שגיאת שרת — ודא שהשרת רץ (py app.py)</span>';
+      return;
+    }
+    if (!res.ok) {
+      status.innerHTML = `<span style="color:var(--red)">⚠ ${data.error || 'שגיאה בקריאת הקובץ'}</span>`;
+      return;
+    }
+
+    sessionId = data.session_id;
+    currentAnalysis = data.analysis;
+    status.innerHTML = `<span class="badge">✓ ${file.name}</span>`;
+    document.getElementById('placeholder').style.display = 'none';
+    const results = document.getElementById('results');
+    results.style.display = 'flex';
+
+    renderDashboard(data.analysis);
+    addBotMessage(`הקובץ **${file.name}** נותח בהצלחה ✓\n\n` + buildSummaryText(data.analysis));
+  } catch (err) {
+    status.innerHTML = `<span style="color:var(--red)">⚠ שגיאה: ${err.message}</span>`;
+  }
+}
+
+function buildSummaryText(a) {
+  const m = a.metrics || {};
+  let lines = [`**סה"כ תקלות:** ${a.total_failures}`];
+  if (m.closure_rate !== undefined) lines.push(`**אחוז סגירה:** ${m.closure_rate}%`);
+  if (m.open_items !== undefined) lines.push(`**פריטים פתוחים:** ${m.open_items}`);
+  if (m.ca_coverage !== undefined) lines.push(`**כיסוי פעולות מתקנות:** ${m.ca_coverage}%`);
+  if (a.summary?.top_3_modes?.length) {
+    lines.push('\n**תקלות נפוצות:**\n' + a.summary.top_3_modes.map(x => `• ${x}`).join('\n'));
+  }
+  lines.push('\nשאל אותי כל שאלה על הנתונים!');
+  return lines.join('\n');
+}
+
+function renderDashboard(a) {
+  renderSummary(a);
+  renderKPIs(a);
+  renderMainProblems(a);
+  renderRCA(a);
+  renderRecurring(a);
+  renderRecommendations(a);
+  renderCharts(a);
+  renderParetoTable(a);
+}
+
+function renderSummary(a) {
+  const highlights = a.executive_summary?.highlights || [];
+  const m = a.metrics || {};
+  const items = highlights.length ? highlights : [
+    `נותחו ${a.total_failures} תקלות`,
+    m.closure_rate !== undefined ? `אחוז סגירה: ${m.closure_rate}%` : null,
+  ].filter(Boolean);
+  document.getElementById('summaryBox').innerHTML =
+    '<ul>' + items.map(h => `<li>${escHtml(h)}</li>`).join('') + '</ul>';
+}
+
+function renderMainProblems(a) {
+  const modes = a.failure_mode_distribution || [];
+  const el = document.getElementById('mainProblems');
+  if (!modes.length) { el.innerHTML = '<span style="color:var(--muted)">אין נתונים</span>'; return; }
+  el.innerHTML = modes.slice(0, 5).map(m => `
+    <div class="problem-row">
+      <div>${escHtml(m.name)}</div>
+      <div class="problem-bar"><div class="problem-bar-fill" style="width:${m.percentage}%"></div></div>
+      <div class="problem-meta"><span>${m.count} תקלות</span><span>${m.percentage}%</span></div>
+    </div>`).join('');
+}
+
+function renderRCA(a) {
+  const causes = a.root_cause_distribution || [];
+  const el = document.getElementById('rcaSection');
+  if (!causes.length) { el.innerHTML = '<span style="color:var(--muted)">לא נמצאה עמודת סיבת שורש</span>'; return; }
+  const vital = causes.filter(c => c.cumulative <= 80);
+  el.innerHTML = causes.slice(0, 5).map((c, i) => `
+    <div class="problem-row">
+      <div>${i + 1}. ${escHtml(c.name)}</div>
+      <div class="problem-bar"><div class="problem-bar-fill" style="width:${c.percentage}%;background:var(--accent2)"></div></div>
+      <div class="problem-meta"><span>${c.count} מקרים</span><span>${c.percentage}%</span></div>
+    </div>`).join('') +
+    (vital.length ? `<p style="margin-top:12px;font-size:12px;color:var(--yellow)">▲ ${vital.length} גורמים מהווים 80% מהבעיות</p>` : '');
+}
+
+function renderRecurring(a) {
+  const recurring = a.recurring_faults || [];
+  const el = document.getElementById('recurringSection');
+  if (!recurring.length) {
+    el.innerHTML = '<span style="color:var(--green)">✓ לא זוהו תקלות חוזרות</span>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr><th>סוג תקלה</th><th>כמות</th><th>%</th></tr></thead>
+    <tbody>${recurring.slice(0, 8).map(r => `
+      <tr><td>${escHtml(r.name)}</td><td>${r.count}</td><td>${r.percentage}%</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderRecommendations(a) {
+  const recs = a.recommendations || [];
+  const el = document.getElementById('recsSection');
+  if (!recs.length) { el.innerHTML = '<span style="color:var(--muted)">אין המלצות</span>'; return; }
+  el.innerHTML = recs.slice(0, 6).map(r => `
+    <div class="rec-item">
+      <div class="rec-num">${r.priority}</div>
+      <div class="rec-body">
+        <strong>${escHtml(r.title)}</strong>
+        <span>${escHtml(r.detail)}</span>
+        <div class="rec-tag">${escHtml(r.category)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function askFromDash(text) {
+  document.getElementById('chatInput').value = text;
+  sendMessage();
+}
+
+async function downloadSummary() {
+  if (!sessionId) { alert('העלה קובץ Excel תחילה'); return; }
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, message: 'דוח מסכם', history: [] })
+  });
+  const data = await res.json();
+  if (!res.ok) { alert(data.error || 'שגיאה'); return; }
+  const blob = new Blob([data.response.replace(/\*\*/g, '')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'דוח_מסכם_תקלות.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderKPIs(a) {
+  const m = a.metrics || {};
+  const kpis = [
+    { val: a.total_failures, lbl: 'סה"כ תקלות', cls: '' },
+    { val: m.closed_items ?? '—', lbl: 'סגורות', cls: 'green' },
+    { val: m.open_items ?? '—', lbl: 'פתוחות', cls: m.open_items > 0 ? 'red' : 'green' },
+    { val: m.closure_rate !== undefined ? m.closure_rate + '%' : '—', lbl: 'אחוז סגירה', cls: rateClass(m.closure_rate) },
+    { val: m.ca_coverage !== undefined ? m.ca_coverage + '%' : '—', lbl: 'כיסוי CA', cls: rateClass(m.ca_coverage) },
+    { val: m.unique_modes ?? '—', lbl: 'סוגי תקלה', cls: '' },
+    { val: m.recurring_modes ?? '—', lbl: 'חוזרות', cls: m.recurring_modes > 0 ? 'yellow' : 'green' },
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(k =>
+    `<div class="kpi ${k.cls}"><div class="val">${k.val}</div><div class="lbl">${k.lbl}</div></div>`
+  ).join('');
+}
+
+function rateClass(v) {
+  if (v === undefined) return '';
+  return v >= 80 ? 'green' : v >= 60 ? 'yellow' : 'red';
+}
+
+function renderCharts(a) {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+
+  const row = document.getElementById('chartsRow');
+  row.innerHTML = '';
+
+  const toAdd = [];
+  if (a.failure_mode_distribution?.length)
+    toAdd.push({ id: 'chartFM', title: 'התפלגות סוגי תקלה', data: a.failure_mode_distribution, type: 'bar' });
+  if (a.root_cause_distribution?.length)
+    toAdd.push({ id: 'chartRC', title: 'התפלגות סיבות שורש', data: a.root_cause_distribution, type: 'doughnut' });
+  if (a.trend_data?.length)
+    toAdd.push({ id: 'chartTrend', title: 'מגמת תקלות', data: a.trend_data, type: 'line' });
+  if (a.stage_distribution?.length)
+    toAdd.push({ id: 'chartStage', title: 'שלב גילוי פגם', data: a.stage_distribution, type: 'doughnut' });
+
+  toAdd.forEach(cfg => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h3>${cfg.title}</h3><canvas id="${cfg.id}"></canvas>`;
+    row.appendChild(card);
+
+    const labels = cfg.data.map(d => d.name || d.month);
+    const values = cfg.data.map(d => d.count);
+    const COLORS = ['#4f8ef7','#e94560','#22c55e','#f59e0b','#a78bfa','#38bdf8','#fb923c','#f472b6'];
+
+    charts[cfg.id] = new Chart(document.getElementById(cfg.id), {
+      type: cfg.type,
+      data: {
+        labels,
+        datasets: [{
+          label: 'כמות',
+          data: values,
+          backgroundColor: cfg.type === 'bar' || cfg.type === 'line'
+            ? 'rgba(79,142,247,.75)' : COLORS.slice(0, values.length),
+          borderColor: cfg.type === 'line' ? '#4f8ef7' : undefined,
+          borderWidth: cfg.type === 'line' ? 2 : 1,
+          fill: cfg.type === 'line',
+          tension: .4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: cfg.type !== 'bar', labels: { color: '#94a3b8', font: { size: 11 } } } },
+        scales: cfg.type === 'bar' || cfg.type === 'line' ? {
+          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e2130' } },
+          y: { ticks: { color: '#64748b' }, grid: { color: '#1e2130' }, beginAtZero: true },
+        } : {},
+      }
+    });
+  });
+}
+
+function renderParetoTable(a) {
+  const el = document.getElementById('paretoTable');
+  const data = a.failure_mode_distribution || a.root_cause_distribution;
+  if (!data?.length) { el.style.display = 'none'; return; }
+
+  const title = a.failure_mode_distribution ? 'ניתוח פריטו — סוגי תקלה' : 'ניתוח פריטו — סיבות שורש';
+  el.innerHTML = `
+    <h3>${title}</h3>
+    <table>
+      <thead><tr><th>#</th><th>פריט</th><th>כמות</th><th>%</th><th>מצטבר</th></tr></thead>
+      <tbody>${data.slice(0, 10).map((d, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escHtml(d.name)}</td>
+          <td>${d.count}</td>
+          <td>${d.percentage}%</td>
+          <td>${d.cumulative}%</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function askSuggestion(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  sendMessage();
+}
+
+async function sendMessage() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  addUserMessage(text);
+  inp.value = '';
+  inp.style.height = '';
+
+  const typingId = addTypingIndicator();
+  document.getElementById('sendBtn').disabled = true;
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message: text, history: chatHistory.slice(-20) })
+    });
+    const data = await res.json();
+    removeTypingIndicator(typingId);
+
+    if (!res.ok) { addBotMessage(`⚠ ${data.error || 'שגיאה'}`); return; }
+
+    addBotMessage(data.response);
+    chatHistory.push({ role: 'user', content: text });
+    chatHistory.push({ role: 'assistant', content: data.response });
+  } catch (err) {
+    removeTypingIndicator(typingId);
+    addBotMessage(`⚠ שגיאת רשת: ${err.message}`);
+  } finally {
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+function addUserMessage(text) {
+  const msgs = document.getElementById('messages');
+  msgs.insertAdjacentHTML('beforeend', `<div class="msg user"><div class="bubble">${escHtml(text)}</div></div>`);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addBotMessage(text) {
+  const msgs = document.getElementById('messages');
+  msgs.insertAdjacentHTML('beforeend', `<div class="msg bot"><div class="bubble">${formatMarkdown(text)}</div></div>`);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTypingIndicator() {
+  const id = 'typing_' + Date.now();
+  document.getElementById('messages').insertAdjacentHTML('beforeend',
+    `<div class="msg bot" id="${id}"><div class="bubble typing"><span class="spinner"></span> חושב…</div></div>`);
+  document.getElementById('messages').scrollTop = 99999;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  document.getElementById(id)?.remove();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatMarkdown(text) {
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^• /gm, '&bull; ')
+    .replace(/\n/g, '<br>');
+}
+
+document.getElementById('chatInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+</script>
+</body>
+</html>
