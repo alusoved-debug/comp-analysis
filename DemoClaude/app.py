@@ -5,7 +5,13 @@ import traceback
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, send_file
-import anthropic
+
+load_dotenv()
+
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
 
 from analyzer import FaultAnalyzer
 from local_chat import answer as local_answer
@@ -100,7 +106,7 @@ def chat():
     analysis = _cache[sid]['analysis'] if sid and sid in _cache else None
     api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
 
-    if not api_key or api_key == 'your-api-key-here':
+    if not api_key or api_key == 'your-api-key-here' or anthropic is None:
         return jsonify({
             'response': local_answer(message, analysis),
             'mode': 'local',
@@ -143,4 +149,8 @@ def chat():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5050))
-    app.run(debug=True, port=port)
+    host = os.environ.get('HOST', '0.0.0.0')
+    debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
+    print(f'  Local:   http://127.0.0.1:{port}')
+    print(f'  Network: http://<your-ip>:{port}  (same WiFi as phone)')
+    app.run(debug=debug, host=host, port=port)
